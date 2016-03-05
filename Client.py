@@ -1,5 +1,6 @@
 import socket
 from Node import Node
+import threading
 
 class Client(Node):
 	isConnected = False
@@ -11,9 +12,9 @@ class Client(Node):
 	def connect(self, host, port):
 		self.socket.connect((host, port))
 		self.isConnected = True
-		self.start()
-		#self.onReceipt()
-
+		sender = threading.Thread(target=self.send)
+		sender.start()
+		
 	def onReceipt(self):
 		while self.isConnected:
 			data = self.socket.recv(self.sockBuffer)
@@ -27,7 +28,7 @@ class Client(Node):
 				print 'Received', data
 		self.socket.close()
 		
-	def run(self):
+	def send(self):
 		while self.isConnected:
 			text = raw_input("Insert message: ")
 			if text == self.EXIT:

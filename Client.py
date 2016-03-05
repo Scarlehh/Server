@@ -12,8 +12,8 @@ class Client(Node):
 		self.socket.connect((host, port))
 		self.isConnected = True
 		self.start()
-		self.onReceipt()
-			
+		#self.onReceipt()
+
 	def onReceipt(self):
 		while self.isConnected:
 			data = self.socket.recv(self.sockBuffer)
@@ -36,8 +36,8 @@ class Client(Node):
 		print 'Ended message stream'
 		
 def main():
-	HOST = 'localhost'    # The remote host
-	PORT = 50010              # The same port as used by the server
+	HOST = 'localhost'		# The remote host
+	PORT = 50010			# The same port as used by the server
 	
 	client = Client(HOST, PORT)
 	

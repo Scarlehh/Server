@@ -1,63 +1,89 @@
 import socket
 from Node import Node
 import threading
-import os
+import sys
+import time
 
-class Server(Node):
-	def __init__(self, host, port):
-		super(Server, self).__init__()
+class Server(object):
+	END_CONNECTION = False
+	CONNECTIONS = []
+	CLIENTS = []
+	TIMEOUT = 0.1
+
+	def __init__(self, host, port, sockBuffer=1024):
+		self.sockBuffer=sockBuffer
+		self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+		self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 		self.makeServer(host, port)
 	
 	def makeServer(self, host, port, backlog=0):
 		self.socket.bind((host, port))
-		self.socket.listen(backlog);
+		self.socket.listen(backlog)
 	
-	def exit(self):
+	def startServer(self):
+		manager = ThreadManager(self)
+		manager.daemon = True
+		manager.start()	
 		input = ''
 		while input != '.bye':
-			input=raw_input("Type .bye to exit")
+			input=raw_input("Type .bye to exit\n")
+		self.END_CONNECTION = True
 		print('Closing server...')
-		os._exit(1)		# tidy this
+		sys.exit()		# tidy this
+		
+class ThreadManager(threading.Thread):
+	END_CONNECTION = False
+	CONNECTIONS = []
+	CLIENTS = []
+	TIMEOUT = 0.1
+
+	def __init__(self, server):
+		super(ThreadManager, self).__init__()
+		self.server = server
 	
 	def run(self):
-		self.listenConnections()
+		listener = threading.Thread(target=self.listenConnections)
+		listener.daemon = True
+		listener.start()
+		while self.END_CONNECTION is False:
+			for i in range (0,len(self.CONNECTIONS)):
+				self.CONNECTIONS[i].join(self.TIMEOUT)
+				if not self.CONNECTIONS[i].isAlive():
+					del self.CONNECTIONS[i]
+		print 'Server closed.'
 	
 	def listenConnections(self):
-		self.connections = []
-		self.amount = 0
+		print 'Waiting for connection...'
 		while 1:
-			print 'Waiting for connection...'
-			conn, address = self.socket.accept()
+			conn, address = self.server.socket.accept()
+			self.CLIENTS.append(conn)
 			print 'Connected to', address
-			thread = threading.Thread(target=self.onReceipt, args=(conn, address,))
-			self.connections.append(thread)
-			self.amount+=1
+			thread = threading.Thread(target=self.onReceipt, args=(conn, address))
+			thread.daemon = True
 			thread.start()
+			self.CONNECTIONS.append(thread)
 			# Make new thread for connection + run
 	
 	def onReceipt(self, conn, address):
+		user = 'User' + str(address[1])
 		while 1:
-			data = conn.recv(self.sockBuffer)
+			data = conn.recv(self.server.sockBuffer)
 			if not data:
-				print 'Connection lost with', address
-				conn.close()
-				break
-			elif data == self.EXIT:
-				print 'Client', address, 'has exited'
+				print 'Client has quit', address
 				conn.close()
 				break
 			else:
-				print 'Received', data, 'from', address
-				conn.sendall(data)
+				data = user + ' ' + data
+				sys.stdout.write(data)
+				for i in range (0,len(self.CONNECTIONS)):
+					self.CLIENTS[i].sendall(data)
 		conn.close()
-		
 
 def main():
 	HOST = ''                 # Symbolic name meaning all available interfaces
 	PORT = 50010              # Arbitrary non-privileged port
 
 	server = Server(HOST, PORT)
-	server.start()
-	server.exit()
+	server.startServer()
 	
 if __name__ == "__main__": main()

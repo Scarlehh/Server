@@ -6,7 +6,6 @@ class Node(threading.Thread):
 
 	def __init__(self, sockBuffer=1024):
 		super(Node, self).__init__()
-		threading.Thread.__init__(self)
 		self.sockBuffer=sockBuffer
 		self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 		self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)

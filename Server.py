@@ -26,6 +26,25 @@ class Server(object):
 			input=raw_input("Type .bye to exit\n")
 		print('Closing server...')
 		sys.exit()		# tidy this
+	
+	def handler(self, conn, address, clients):
+		self.onReceipt(conn, address, clients)
+		
+	def onReceipt(self, conn, address, clients):
+		user = 'User' + str(address[1])
+		print user, 'has joined'
+		while 1:
+			data = conn.recv(self.sockBuffer)
+			if not data:
+				print user, 'has left'
+				conn.close()
+				break
+			else:
+				data = user + ': ' + data
+				sys.stdout.write(data)
+				for i in range (0,len(clients)):
+					clients[i].sendall(data)
+		conn.close()
 		
 class ThreadManager(threading.Thread):
 	END_CONNECTION = False
@@ -56,25 +75,10 @@ class ThreadManager(threading.Thread):
 			self.CLIENTS.append(conn)
 			print 'Connected to', address
 			# Make new thread for connection + run
-			thread = threading.Thread(target=self.onReceipt, args=(conn, address))
+			thread = threading.Thread(target=self.server.handler, args=(conn, address, self.CLIENTS))
 			thread.daemon = True
 			thread.start()
 			self.CONNECTIONS.append(thread)
-	
-	def onReceipt(self, conn, address):
-		user = 'User' + str(address[1])
-		while 1:
-			data = conn.recv(self.server.sockBuffer)
-			if not data:
-				print 'Client has quit', address
-				conn.close()
-				break
-			else:
-				data = user + ' ' + data
-				sys.stdout.write(data)
-				for i in range (0,len(self.CONNECTIONS)):
-					self.CLIENTS[i].sendall(data)
-		conn.close()
 
 def main():
 	HOST = ''                 # Symbolic name meaning all available interfaces

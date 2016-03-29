@@ -5,9 +5,6 @@ import sys
 import time
 
 class Server(object):
-	END_CONNECTION = False
-	CONNECTIONS = []
-	CLIENTS = []
 	TIMEOUT = 0.1
 
 	def __init__(self, host, port, sockBuffer=1024):
@@ -27,7 +24,6 @@ class Server(object):
 		input = ''
 		while input != '.bye':
 			input=raw_input("Type .bye to exit\n")
-		self.END_CONNECTION = True
 		print('Closing server...')
 		sys.exit()		# tidy this
 		
@@ -50,6 +46,7 @@ class ThreadManager(threading.Thread):
 				self.CONNECTIONS[i].join(self.TIMEOUT)
 				if not self.CONNECTIONS[i].isAlive():
 					del self.CONNECTIONS[i]
+					del self.CLIENTS[i]
 		print 'Server closed.'
 	
 	def listenConnections(self):
@@ -58,11 +55,11 @@ class ThreadManager(threading.Thread):
 			conn, address = self.server.socket.accept()
 			self.CLIENTS.append(conn)
 			print 'Connected to', address
+			# Make new thread for connection + run
 			thread = threading.Thread(target=self.onReceipt, args=(conn, address))
 			thread.daemon = True
 			thread.start()
 			self.CONNECTIONS.append(thread)
-			# Make new thread for connection + run
 	
 	def onReceipt(self, conn, address):
 		user = 'User' + str(address[1])
